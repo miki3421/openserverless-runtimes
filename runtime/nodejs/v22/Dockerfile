@@ -18,7 +18,8 @@
 ARG COMMON=missing:missing
 FROM ${COMMON} AS builder
 
-FROM node:22.23.2-bookworm
+FROM node:22.23.4-bookworm@sha256:e273cf2a19c7334c03f52e2ca933ecdfc3fbfaad49db7b8bc8c3edd9ac34e9c7
+# Preserve the compilation compatibility marker for existing v22 action archives.
 ENV OW_EXECUTION_ENV=apacheopenserverless/nodejs-22.23.2
 COPY --from=builder /go/bin/proxy /bin/proxy
 
@@ -26,15 +27,17 @@ ENV OW_COMPILER=/bin/compile
 ENV OW_LOG_INIT_ERROR=1
 ENV OW_WAIT_FOR_ACK=1
 
-RUN apt-get update && apt-get install -y \
+RUN apt-get update && apt-get upgrade -y && apt-get install -y \
     imagemagick \
     graphicsmagick \
     unzip \
     && rm -rf /var/lib/apt/lists/*
 
-COPY package.json /
+RUN npm install --global npm@11.21.2 && npm cache clean --force
+
+COPY package.json package-lock.json /
 RUN npm config set fetch-retry-maxtimeout 60000 -g
-RUN cd / && npm install && npm cache clean --force
+RUN cd / && npm ci --omit=dev && npm cache clean --force
 
 RUN mkdir -p /app/action ;\
   chmod -R 0775 /app ;\

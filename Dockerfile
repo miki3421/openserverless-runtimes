@@ -14,8 +14,8 @@
 # limitations under the License.
 #
 
-# Do not fix the patch level for golang:1.19 to automatically get security fixes.
-FROM golang:1.21
+# Pin the toolchain used to compile the action proxy.
+FROM golang:1.27.3-bookworm@sha256:b08bc99468058b6d8a0ada17fa54996b910d5e82a7e95bee0372e3bd98415258
 ENV HOME=/tmp
 
 WORKDIR /src
