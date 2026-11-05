@@ -25,3 +25,18 @@ redis
 pymongo
 kafka_python
 bcrypt
+
+# Security floors and reproducible compiler tooling for Advanced.
+certifi>=2026.10.23
+dnspython>=2.9.2
+pymongo>=4.18.3
+urllib3>=2.8.0
+pip>=26.3
+six>=1.17.0
+wheel>=0.48.0
+virtualenv>=21.15.5
+filelock>=4.2.9
+distlib>=0.4.3
+platformdirs>=4.11.12
+packaging>=26.3
+python-discovery>=1.6.1

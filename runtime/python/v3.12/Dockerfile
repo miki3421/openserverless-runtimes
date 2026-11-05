@@ -18,19 +18,21 @@
 ARG COMMON=missing:missing
 FROM ${COMMON} AS builder
 
-FROM python:3.12.14-slim-bookworm
+FROM python:3.12.16-slim-bookworm@sha256:935c3c5b12357a7e10caa9c1e6ca5692344d97cf229832ef584be2cec9fc03df
+# Preserve the marker accepted by existing compiled Python 3.12 archives.
 ENV OW_EXECUTION_ENV=apacheopenserverless/runtime-python-v3.12.14
 COPY --from=builder /go/bin/proxy /bin/proxy
 
 # install zip
-RUN apt-get update && apt-get install -y python3-lxml zip \
+RUN apt-get update && apt-get upgrade -y && apt-get install -y python3-lxml zip \
     && rm -rf /var/lib/apt/lists/*
 
 # Install common modules for python
 COPY requirements.txt requirements.txt
 
-RUN pip3 install --upgrade pip six wheel virtualenv
-RUN pip3 install --no-cache-dir -r requirements.txt
+RUN python -m pip install --no-cache-dir pip==26.3 && \
+    python -m pip install --no-cache-dir -r requirements.txt && \
+    python -m pip check
 
 RUN mkdir -p /action
 WORKDIR /
