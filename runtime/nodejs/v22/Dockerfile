@@ -18,6 +18,12 @@
 ARG COMMON=missing:missing
 FROM ${COMMON} AS builder
 
+FROM node:22.23.4-bookworm@sha256:e273cf2a19c7334c03f52e2ca933ecdfc3fbfaad49db7b8bc8c3edd9ac34e9c7 AS openexr-security
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    cmake debhelper dh-buildinfo dpkg-dev patch && rm -rf /var/lib/apt/lists/*
+COPY security/ /security/
+RUN sh /security/build-openexr.sh
+
 FROM node:22.23.4-bookworm@sha256:e273cf2a19c7334c03f52e2ca933ecdfc3fbfaad49db7b8bc8c3edd9ac34e9c7
 # Preserve the compilation compatibility marker for existing v22 action archives.
 ENV OW_EXECUTION_ENV=apacheopenserverless/nodejs-22.23.2
@@ -32,6 +38,15 @@ RUN apt-get update && apt-get upgrade -y && apt-get install -y \
     graphicsmagick \
     unzip \
     && rm -rf /var/lib/apt/lists/*
+
+COPY --from=openexr-security /out/ /tmp/openexr-security/
+RUN test "$(dpkg-query -W -f='${Version}' libopenexr-3-1-30)" = '3.1.5-5' \
+    && test "$(dpkg-query -W -f='${Version}' libopenexr-dev)" = '3.1.5-5' \
+    && cd /tmp/openexr-security && sha256sum -c SHA256SUMS \
+    && dpkg -i ./*.deb \
+    && mkdir -p /usr/share/ops-security/openexr \
+    && cp SOURCE SHA256SUMS openexr-idmanifest.patch openexr-LICENSE.md changelog /usr/share/ops-security/openexr/ \
+    && rm -rf /tmp/openexr-security
 
 RUN npm install --global npm@11.21.2 && npm cache clean --force
 

@@ -8,6 +8,13 @@ The Apache Software Foundation (http://www.apache.org/).
 Container image: apache/openserverless-runtime-nodejs:v22
 ------------------------------------------------------------------------------
 
+This ADV image includes OpenEXR 3.1.5, Debian revision 3.1.5-5+0ops1,
+with upstream input validation fixes for CVE-2026-42216 and CVE-2026-42217.
+OpenEXR is Copyright (c) Contributors to the OpenEXR Project and is distributed
+under BSD-3-Clause. Its license is included under security/openexr-LICENSE.md
+in the source and /usr/share/ops-security/openexr in the image. Debian's package
+copyright and other notices remain under /usr/share/doc/libopenexr-3-1-30.
+
 ---------------
 
 The container image contains /bin/proxy, the Apache OpenServerless action

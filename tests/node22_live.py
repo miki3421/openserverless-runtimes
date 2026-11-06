@@ -11,7 +11,10 @@ import urllib.request
 parser = argparse.ArgumentParser()
 parser.add_argument('--config', type=pathlib.Path, required=True)
 parser.add_argument('--api', required=True)
+parser.add_argument('--native-addon', type=pathlib.Path)
+parser.add_argument('--openexr-version')
 args = parser.parse_args()
+assert bool(args.native_addon) == bool(args.openexr_version), 'Native image checks require both inputs'
 config = json.loads(args.config.read_text())
 assert config.get('scope', {}).get('lab') is True
 assert set(config['apps']) == {'alpha', 'beta'}
@@ -32,6 +35,26 @@ return {marker:args.marker,node:process.version,uid:process.getuid(),modules:mod
   decoded:query.parse('q=caff%C3%A8+%2B+%E2%82%AC').q,decoder:pkg.version,
   sameExport:decoder===esm.default,s3:signed.searchParams.has('X-Amz-Signature')};
 }'''
+expected_native = {}
+if args.native_addon:
+    native = args.native_addon.read_bytes()
+    assert 0 < len(native) < 131072, 'Use the bounded synthetic ABI fixture'
+    encoded = base64.b64encode(native).decode()
+    extension = '''
+const cp=require('node:child_process');
+const temp=fs.mkdtempSync('/tmp/ops-native-');
+let nativeLibrary, exrVersion, media;
+try {
+ fs.writeFileSync(temp+'/probe.node',Buffer.from(NATIVE_BYTES,'base64'));
+ nativeLibrary=require(temp+'/probe.node').version().startsWith('ImageMagick 6.');
+ exrVersion=cp.execFileSync('dpkg-query',['-W','-f=${Version}','libopenexr-3-1-30'],{encoding:'utf8',timeout:10000}).trim();
+ cp.execFileSync('convert',['-size','2x2','xc:#123456',temp+'/synthetic.exr'],{timeout:10000});
+ cp.execFileSync('convert',[temp+'/synthetic.exr',temp+'/synthetic.png'],{timeout:10000});
+ media=cp.execFileSync('identify',['-format','%m %wx%h',temp+'/synthetic.png'],{encoding:'utf8',timeout:10000});
+} finally {fs.rmSync(temp,{recursive:true,force:true});}
+'''.replace('NATIVE_BYTES', json.dumps(encoded))
+    code = code.replace('return {marker:', extension+'return {nativeLibrary,exrVersion,media,marker:')
+    expected_native = {'nativeLibrary': True, 'exrVersion': args.openexr_version, 'media': 'PNG 2x2'}
 
 class NoRedirect(urllib.request.HTTPRedirectHandler):
     def redirect_request(self, *arguments, **kwargs):
@@ -64,7 +87,8 @@ try:
             assert status == 200 and len(raw) <= 65536, ('invoke', tenant, status)
             result = json.loads(raw)
             assert result == {'marker': marker, 'node': 'v22.23.4', 'uid': 65534, 'modules': 9,
-                              'decoded': 'caffè + €', 'decoder': '0.5.1', 'sameExport': True, 's3': True}, 'unexpected action result'
+                              'decoded': 'caffè + €', 'decoder': '0.5.1', 'sameExport': True, 's3': True,
+                              **expected_native}, 'unexpected action result'
             rows.append({'tenant': tenant, 'check': 'node-decoder-owner', 'invocation': n + 1, 'status': 'PASS'})
         peer = 'beta' if tenant == 'alpha' else 'alpha'
         target = '/api/v1/namespaces/' + config['apps'][tenant]['namespace'] + '/actions/' + name

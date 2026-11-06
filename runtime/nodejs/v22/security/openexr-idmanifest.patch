@@ -1,0 +1,34 @@
+Description: Backport upstream IDManifest input checks without changing ABI
+Origin: upstream, https://github.com/AcademySoftwareFoundation/openexr/commit/48e5f65a7de405e77c74c2a01bd228ef35d18118
+ https://github.com/AcademySoftwareFoundation/openexr/commit/21eaa33bcbbb0c83a5fc42f6b6d65b70a996e63c
+Bug: CVE-2026-42216, CVE-2026-42217
+Forwarded: not-needed
+Comment: Context/whitespace adapted to Debian 12 OpenEXR 3.1.5-5.
+ Source is BSD-3-Clause, Copyright Contributors to the OpenEXR Project.
+--- a/src/lib/OpenEXR/ImfIDManifest.cpp
++++ b/src/lib/OpenEXR/ImfIDManifest.cpp
+@@ -138,6 +138,11 @@
+             if(readPtr>=endPtr)
+             {
+                 throw IEX_NAMESPACE::InputExc ("IDManifest too small for variable length integer");
++            }
++            // Upstream 21eaa33: reject shifts outside uint64_t before decoding.
++            if(shift >= 64)
++            {
++                throw IEX_NAMESPACE::InputExc ("Invalid variable-length integer in IDManifest");
+             }
+             byte =  *(unsigned char*)readPtr++;
+             // top bit of byte isn't part of actual number, it just indicates there's more info to come
+@@ -357,6 +362,12 @@
+       //
+       // previous string had more than 255 characters? 
+       //
++      // Upstream 48e5f65: validate prefix bytes before indexing.
++      const size_t minPrefixLen = stringList[i-1].size()>255 ? size_t(2) : size_t(1);
++      if(stringList[i].size() < minPrefixLen)
++      {
++          throw IEX_NAMESPACE::InputExc ("IDManifest string too small for common prefix length");
++      }
+       if(stringList[i-1].size()>255)
+       {
+           common = size_t( ((unsigned char) (stringList[i][0])) <<8 ) + size_t( (unsigned char) (stringList[i][1]));
