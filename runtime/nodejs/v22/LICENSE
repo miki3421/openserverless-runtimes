@@ -4377,7 +4377,7 @@ THE SOFTWARE.
 
 ---------------
 
-The container image contains decode-uri-component 0.2.2, installed by npm from
+The container image contains decode-uri-component 0.5.1, installed by npm from
 the package.json beside this file, which was released under an MIT license.
 
 The MIT License (MIT)

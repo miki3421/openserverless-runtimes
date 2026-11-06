@@ -279,8 +279,11 @@ Copyright (c) 2013-2016 Evan Vosberg
 
 ---------------
 
-The container image contains decode-uri-component 0.2.2, installed by npm,
+The container image contains decode-uri-component 0.5.1, installed by npm,
 which was released under an MIT license.
+
+OpenServerless adds a conditional CommonJS export adapter for query-string 7.
+The upstream decoder implementation is unchanged and hash-verified at build time.
 
 Copyright (c) 2017, Sam Verschueren <sam.verschueren@gmail.com> (github.com/SamVerschueren)
 

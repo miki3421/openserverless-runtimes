@@ -36,8 +36,12 @@ RUN apt-get update && apt-get upgrade -y && apt-get install -y \
 RUN npm install --global npm@11.21.2 && npm cache clean --force
 
 COPY package.json package-lock.json /
+COPY bin/prepare-dependencies.cjs /tmp/ops-prepare-dependencies.cjs
 RUN npm config set fetch-retry-maxtimeout 60000 -g
-RUN cd / && npm ci --omit=dev && npm cache clean --force
+RUN cd / && npm ci --omit=dev \
+    && node /tmp/ops-prepare-dependencies.cjs / \
+    && rm /tmp/ops-prepare-dependencies.cjs \
+    && npm cache clean --force
 
 RUN mkdir -p /app/action ;\
   chmod -R 0775 /app ;\

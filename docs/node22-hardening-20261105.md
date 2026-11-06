@@ -1,5 +1,9 @@
 # Advanced Node.js22 image qualification
 
+The pending decoder finding below is superseded by the separate
+[2026-11-06 decoder qualification](node22-decoder-20261106.md). This document
+retains the original image's results and limitations.
+
 This personal-branch candidate updates Node22.23.2 to22.23.4, npm to11.21.2,
 the proxy compiler to pinned Go1.27.3, Debian packages and crypto-js4.2.0.
 Use npm ci with the existing dependency lock. Other runtime kinds are unchanged.
