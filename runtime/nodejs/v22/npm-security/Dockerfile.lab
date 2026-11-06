@@ -1,0 +1,6 @@
+# Licensed under the Apache License, Version 2.0. See LICENSE and NOTICE.
+FROM localhost/ops-advanced-nodejs:22-20261106-json-r2@sha256:3ea7a16c3e6bcb69966eb6fda9bf9741bee7279c06a922d942b7c2f71f7d992a
+USER 0
+COPY npm-security/ /usr/share/ops-security/npm-dependencies/
+RUN python3 /usr/share/ops-security/npm-dependencies/apply.py
+USER nobody

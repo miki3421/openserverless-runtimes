@@ -13,6 +13,7 @@ parser.add_argument('--config', type=pathlib.Path, required=True)
 parser.add_argument('--api', required=True)
 parser.add_argument('--native-addon', type=pathlib.Path)
 parser.add_argument('--openexr-version')
+parser.add_argument('--npm-backport', action='store_true')
 args = parser.parse_args()
 assert bool(args.native_addon) == bool(args.openexr_version), 'Native image checks require both inputs'
 config = json.loads(args.config.read_text())
@@ -66,6 +67,16 @@ try {
 '''.replace('NATIVE_BYTES', json.dumps(encoded))
     code = code.replace('return {marker:', extension+'return {nativeLibrary,exrVersion,media,marker:')
     expected_native = {'nativeLibrary': True, 'exrVersion': args.openexr_version, 'media': 'PNG 2x2'}
+
+if args.npm_backport:
+    # Normal local operations only; cancellation/complex-pattern probes stay offline.
+    code = code.replace('const guardReceipt=', '''const npmRequire=createRequire('/usr/local/lib/node_modules/npm/package.json');
+const npmGuardReceipt=JSON.parse(fs.readFileSync('/usr/share/ops-security/npm-dependencies/receipt.json')).length;
+const npmPattern=npmRequire('glob').hasMagic('packages/*') && npmRequire('minimatch').minimatch('packages/alpha','packages/*');
+const guardReceipt=''')
+    code = code.replace('jsonRoundtrip,uuidRoundtrip,guardReceipt,',
+                        'jsonRoundtrip,uuidRoundtrip,guardReceipt,npmGuardReceipt,npmPattern,')
+    expected_native.update({'npmGuardReceipt': 6, 'npmPattern': True})
 
 class NoRedirect(urllib.request.HTTPRedirectHandler):
     def redirect_request(self, *arguments, **kwargs):

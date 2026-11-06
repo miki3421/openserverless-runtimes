@@ -61,6 +61,9 @@ RUN cd / && npm ci --omit=dev \
 COPY node-security/ /usr/share/ops-security/node-dependencies/
 RUN python3 /usr/share/ops-security/node-dependencies/apply.py
 
+COPY npm-security/ /usr/share/ops-security/npm-dependencies/
+RUN python3 /usr/share/ops-security/npm-dependencies/apply.py
+
 RUN mkdir -p /app/action ;\
   chmod -R 0775 /app ;\
   chown -R nobody:root /app

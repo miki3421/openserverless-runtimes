@@ -1,0 +1,158 @@
+[
+  {
+    "path": "glob/dist/commonjs/walker.js",
+    "beforeSha256": "1138ced9d5429681a1740af32d13391a38184a3376d1d9d56eea64b7a43274a1",
+    "replacements": [
+      {
+        "old": "    onResume(fn) {\n        if (this.signal?.aborted)\n            return;",
+        "new": "    onResume(fn) {",
+        "count": 1
+      },
+      {
+        "old": "if (this.signal?.aborted)\n            cb();",
+        "new": "if (this.signal?.aborted)\n            return cb();",
+        "count": 4
+      }
+    ]
+  },
+  {
+    "path": "minimatch/dist/commonjs/index.js",
+    "beforeSha256": "d224f71f20d7c206fcc5b7e9f747324c7698345a0b2c28d717dd9cf698306783",
+    "replacements": [
+      {
+        "old": "    firstPhasePreProcess(globParts) {",
+        "new": "    firstPhasePreProcess(globParts) {\n        const { braceExpandMax = 100_000 } = this.options;",
+        "count": 1
+      },
+      {
+        "old": "                        p2 === '..') {",
+        "new": "                        p2 === '..' ||\n                        globParts.length >= braceExpandMax) {",
+        "count": 1
+      },
+      {
+        "old": "    secondPhasePreProcess(globParts) {",
+        "new": "    secondPhasePreProcess(globParts) {\n        if (globParts.length > 1000) return globParts;",
+        "count": 1
+      }
+    ]
+  },
+  {
+    "path": "glob/dist/commonjs/index.min.js",
+    "beforeSha256": "3178e109aa75b45d6970a51a718f01e5b5b8f87150563ee6cb4c0e75ec215617",
+    "replacements": [
+      {
+        "old": "onResume(t){this.signal?.aborted||(this.paused?this.#t.push(t):t())}",
+        "new": "onResume(t){this.paused?this.#t.push(t):t()}",
+        "count": 1
+      },
+      {
+        "old": "walkCB(t,e,s){this.signal?.aborted&&s(),",
+        "new": "walkCB(t,e,s){if(this.signal?.aborted)return s();",
+        "count": 1
+      },
+      {
+        "old": "walkCBSync(t,e,s){this.signal?.aborted&&s(),",
+        "new": "walkCBSync(t,e,s){if(this.signal?.aborted)return s();",
+        "count": 1
+      },
+      {
+        "old": "if(this.signal?.aborted&&i(),this.paused){",
+        "new": "if(this.signal?.aborted)return i();if(this.paused){",
+        "count": 2
+      },
+      {
+        "old": "firstPhasePreProcess(t){let e=!1;",
+        "new": "firstPhasePreProcess(t){const{braceExpandMax:opsBraceExpandMax=100000}=this.options;let e=!1;",
+        "count": 1
+      },
+      {
+        "old": "||l===\"..\")continue;e=!0,s.splice(i,1);",
+        "new": "||l===\"..\"||t.length>=opsBraceExpandMax)continue;e=!0,s.splice(i,1);",
+        "count": 1
+      },
+      {
+        "old": "secondPhasePreProcess(t){for(",
+        "new": "secondPhasePreProcess(t){if(t.length>1000)return t;for(",
+        "count": 1
+      }
+    ]
+  },
+  {
+    "path": "glob/dist/esm/walker.js",
+    "beforeSha256": "3e15af549ecc74d8691982d571168fd4b0e38b494c2cbb3edcfb8f97d4036ac6",
+    "replacements": [
+      {
+        "old": "    onResume(fn) {\n        if (this.signal?.aborted)\n            return;",
+        "new": "    onResume(fn) {",
+        "count": 1
+      },
+      {
+        "old": "if (this.signal?.aborted)\n            cb();",
+        "new": "if (this.signal?.aborted)\n            return cb();",
+        "count": 4
+      }
+    ]
+  },
+  {
+    "path": "minimatch/dist/esm/index.js",
+    "beforeSha256": "59821ec2ce0d3df968292036e5c831ad322b33e9c33a949ecbc9dfe125d165be",
+    "replacements": [
+      {
+        "old": "    firstPhasePreProcess(globParts) {",
+        "new": "    firstPhasePreProcess(globParts) {\n        const { braceExpandMax = 100_000 } = this.options;",
+        "count": 1
+      },
+      {
+        "old": "                        p2 === '..') {",
+        "new": "                        p2 === '..' ||\n                        globParts.length >= braceExpandMax) {",
+        "count": 1
+      },
+      {
+        "old": "    secondPhasePreProcess(globParts) {",
+        "new": "    secondPhasePreProcess(globParts) {\n        if (globParts.length > 1000) return globParts;",
+        "count": 1
+      }
+    ]
+  },
+  {
+    "path": "glob/dist/esm/index.min.js",
+    "beforeSha256": "9eff492e16fdf9ea47a5f3c3d64784f9238b607f95a278101eb5a4e882f6ea85",
+    "replacements": [
+      {
+        "old": "onResume(t){this.signal?.aborted||(this.paused?this.#t.push(t):t())}",
+        "new": "onResume(t){this.paused?this.#t.push(t):t()}",
+        "count": 1
+      },
+      {
+        "old": "walkCB(t,e,s){this.signal?.aborted&&s(),",
+        "new": "walkCB(t,e,s){if(this.signal?.aborted)return s();",
+        "count": 1
+      },
+      {
+        "old": "walkCBSync(t,e,s){this.signal?.aborted&&s(),",
+        "new": "walkCBSync(t,e,s){if(this.signal?.aborted)return s();",
+        "count": 1
+      },
+      {
+        "old": "if(this.signal?.aborted&&i(),this.paused){",
+        "new": "if(this.signal?.aborted)return i();if(this.paused){",
+        "count": 2
+      },
+      {
+        "old": "firstPhasePreProcess(t){let e=!1;",
+        "new": "firstPhasePreProcess(t){const{braceExpandMax:opsBraceExpandMax=100000}=this.options;let e=!1;",
+        "count": 1
+      },
+      {
+        "old": "||l===\"..\")continue;e=!0,s.splice(i,1);",
+        "new": "||l===\"..\"||t.length>=opsBraceExpandMax)continue;e=!0,s.splice(i,1);",
+        "count": 1
+      },
+      {
+        "old": "secondPhasePreProcess(t){for(",
+        "new": "secondPhasePreProcess(t){if(t.length>1000)return t;for(",
+        "count": 1
+      }
+    ]
+  }
+]
