@@ -8,6 +8,12 @@ The Apache Software Foundation (http://www.apache.org/).
 Container image: apache/openserverless-runtime-nodejs:v22
 ------------------------------------------------------------------------------
 
+This ADV image includes bounded input-validation backports in stream-json 1.9.1
+and the nested uuid 3.4.0 dependency. Their MIT license files remain installed.
+Exact source references and before/after hashes are retained under
+/usr/share/ops-security/node-dependencies. Installed package version numbers
+are not changed to impersonate an upstream release.
+
 This ADV image includes OpenEXR 3.1.5, Debian revision 3.1.5-5+0ops1,
 with upstream input validation fixes for CVE-2026-42216 and CVE-2026-42217.
 OpenEXR is Copyright (c) Contributors to the OpenEXR Project and is distributed

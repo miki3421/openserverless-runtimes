@@ -31,7 +31,18 @@ const esm=await import('decode-uri-component');
 const query=require('query-string');
 const client=new (require('minio').Client)({endPoint:'synthetic.invalid',region:'us-east-1',useSSL:true,accessKey:'synthetic-access',secretKey:'synthetic-secret'});
 const signed=new URL(await client.presignedGetObject('synthetic-bucket','folder/a b.txt',300));
+const {Readable}=require('node:stream'),{pipeline}=require('node:stream/promises');
+const {parser}=require('stream-json');
+const Pick=require('stream-json/filters/Pick');
+const {streamValues}=require('stream-json/streamers/StreamValues');
+const values=streamValues(),rows=[];values.on('data',row=>rows.push(row.value));
+await pipeline(Readable.from(['{"data":{"count":3},"ignored":0}']),parser(),new Pick({filter:'data'}),values);
+const jsonRoundtrip=JSON.stringify(rows)==='[{"count":3}]';
+const short=require('short-uuid')(),id=short.uuid();
+const uuidRoundtrip=short.toUUID(short.fromUUID(id))===id;
+const guardReceipt=JSON.parse(fs.readFileSync('/usr/share/ops-security/node-dependencies/receipt.json')).length;
 return {marker:args.marker,node:process.version,uid:process.getuid(),modules:modules.length,
+  jsonRoundtrip,uuidRoundtrip,guardReceipt,
   decoded:query.parse('q=caff%C3%A8+%2B+%E2%82%AC').q,decoder:pkg.version,
   sameExport:decoder===esm.default,s3:signed.searchParams.has('X-Amz-Signature')};
 }'''
@@ -87,6 +98,7 @@ try:
             assert status == 200 and len(raw) <= 65536, ('invoke', tenant, status)
             result = json.loads(raw)
             assert result == {'marker': marker, 'node': 'v22.23.4', 'uid': 65534, 'modules': 9,
+                              'jsonRoundtrip': True, 'uuidRoundtrip': True, 'guardReceipt': 3,
                               'decoded': 'caffè + €', 'decoder': '0.5.1', 'sameExport': True, 's3': True,
                               **expected_native}, 'unexpected action result'
             rows.append({'tenant': tenant, 'check': 'node-decoder-owner', 'invocation': n + 1, 'status': 'PASS'})

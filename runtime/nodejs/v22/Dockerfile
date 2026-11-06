@@ -58,6 +58,9 @@ RUN cd / && npm ci --omit=dev \
     && rm /tmp/ops-prepare-dependencies.cjs \
     && npm cache clean --force
 
+COPY node-security/ /usr/share/ops-security/node-dependencies/
+RUN python3 /usr/share/ops-security/node-dependencies/apply.py
+
 RUN mkdir -p /app/action ;\
   chmod -R 0775 /app ;\
   chown -R nobody:root /app
