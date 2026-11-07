@@ -45,7 +45,7 @@ RUN test "$(dpkg-query -W -f='${Version}' libopenexr-3-1-30)" = '3.1.5-5' \
     && cd /tmp/openexr-security && sha256sum -c SHA256SUMS \
     && dpkg -i ./*.deb \
     && mkdir -p /usr/share/ops-security/openexr \
-    && cp SOURCE SHA256SUMS openexr-idmanifest.patch openexr-LICENSE.md changelog /usr/share/ops-security/openexr/ \
+    && cp SOURCE SHA256SUMS openexr-idmanifest.patch openexr-deep.patch openexr-LICENSE.md changelog /usr/share/ops-security/openexr/ \
     && rm -rf /tmp/openexr-security
 
 RUN npm install --global npm@11.21.2 && npm cache clean --force

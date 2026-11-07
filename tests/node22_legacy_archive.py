@@ -13,6 +13,8 @@ parser = argparse.ArgumentParser()
 parser.add_argument('--base-image', required=True)
 parser.add_argument('--candidate-image', required=True)
 parser.add_argument('--report-dir', required=True)
+parser.add_argument('--expected-marker', default='apacheopenserverless/nodejs-22.23.2')
+parser.add_argument('--expect-incompatible', action='store_true')
 args = parser.parse_args()
 report = pathlib.Path(args.report_dir)
 report.mkdir(parents=True, exist_ok=True)
@@ -31,7 +33,7 @@ compiled = json.loads(subprocess.check_output([
     '--tmpfs', '/tmp:rw,nosuid,size=64m', '--cpus', '1', '--memory', '256m',
     '--cap-drop=ALL', '--security-opt=no-new-privileges', '--entrypoint', 'python3',
     args.base_image, '-'], input=builder.encode()))
-assert compiled['marker'] == 'apacheopenserverless/nodejs-22.23.2'
+assert compiled['marker'] == args.expected_marker
 cid = subprocess.check_output([
     'docker', 'run', '--rm', '-d', '--cpus', '1', '--memory', '256m',
     '--cap-drop=ALL', '--security-opt=no-new-privileges',
@@ -49,16 +51,28 @@ try:
             request('/init', {'value': {'name': 'synthetic-legacy', 'main': 'main',
                                       'code': compiled['archive'], 'binary': True}})
             break
-        except urllib.error.HTTPError:
-            raise
+        except urllib.error.HTTPError as error:
+            if not args.expect_incompatible:
+                raise
+            assert error.code == 502, error.code
+            body = error.read().lower()
+            logs = subprocess.check_output(['docker', 'logs', cid], stderr=subprocess.STDOUT)
+            assert json.loads(body) == {'error': 'cannot start action. check logs for details.'}, body
+            assert b'execution environment version mismatch' in logs.lower(), logs
+            assert args.expected_marker.encode() in logs, logs
+            checks.append({'check': 'different-runtime-marker-rejected-at-init', 'status': 'PASS'})
+            break
         except (urllib.error.URLError, ConnectionError):
             time.sleep(.2)
     else:
         raise RuntimeError('proxy unavailable')
-    for query, expected in [('q=caff%C3%A8+%2B+%E2%82%AC', 'caffè + €'), ('q=one&q=two', ['one', 'two'])]:
-        result = request('/run', {'value': {'query': query}})
-        assert result == {'q': expected, 'uid': 65534}, result
-        checks.append({'check': 'actual-prior-compiled-archive', 'status': 'PASS'})
+    if args.expect_incompatible:
+        assert len(checks) == 1, 'mismatched archive was accepted at init'
+    else:
+        for query, expected in [('q=caff%C3%A8+%2B+%E2%82%AC', 'caffè + €'), ('q=one&q=two', ['one', 'two'])]:
+            result = request('/run', {'value': {'query': query}})
+            assert result == {'q': expected, 'uid': 65534}, result
+            checks.append({'check': 'actual-prior-compiled-archive', 'status': 'PASS'})
 finally:
     (report/'proxy.log').write_bytes(subprocess.check_output(['docker', 'logs', cid], stderr=subprocess.STDOUT))
     subprocess.run(['docker', 'stop', cid], check=True, stdout=subprocess.DEVNULL)

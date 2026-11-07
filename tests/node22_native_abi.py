@@ -1,9 +1,13 @@
 # Licensed under the Apache License, Version 2.0. See LICENSE and NOTICE.
 import argparse,base64,hashlib,json,pathlib,subprocess
-p=argparse.ArgumentParser();p.add_argument('--base',required=True);p.add_argument('--candidate',required=True);p.add_argument('--output',type=pathlib.Path,required=True);p.add_argument('--addon-output',type=pathlib.Path);a=p.parse_args()
+p=argparse.ArgumentParser();p.add_argument('--base',required=True);p.add_argument('--candidate',required=True);p.add_argument('--output',type=pathlib.Path,required=True);p.add_argument('--addon-output',type=pathlib.Path);p.add_argument('--expect-incompatible',action='store_true');a=p.parse_args()
 flags=['docker','run','--pull=never','--rm','-i','--network','none','--read-only','--tmpfs','/tmp:rw,exec,nosuid,size=64m','--memory','256m','--cpus','1','--pids-limit','128','--cap-drop=ALL','--security-opt=no-new-privileges']
 source="""#include <node_api.h>
+#if __has_include(<wand/MagickWand.h>)
 #include <wand/MagickWand.h>
+#else
+#include <MagickWand/MagickWand.h>
+#endif
 static napi_value version(napi_env env, napi_callback_info info) {
  size_t n=0; const char *v=MagickGetVersion(&n); napi_value out;
  napi_create_string_utf8(env,v,NAPI_AUTO_LENGTH,&out); return out;
@@ -29,7 +33,9 @@ runner="""const fs=require('fs');const payload=JSON.parse(fs.readFileSync(0,'utf
 checks=[]
 for label,image in [('prior-image-control',a.base),('candidate-old-compiled-addon',a.candidate)]:
  r=subprocess.run(flags+['--entrypoint','node',image,'-e',runner],input=json.dumps({'bytes':built['bytes']}),text=True,capture_output=True,timeout=30)
- checks.append({'check':label,'image':image,'status':'PASS' if r.returncode==0 else 'FAIL','exitCode':r.returncode,'stdout':r.stdout,'stderr':r.stderr})
+ expected_rejection = label=='candidate-old-compiled-addon' and a.expect_incompatible
+ ok = (r.returncode!=0 and 'libMagickWand-6.Q16.so.6' in r.stderr) if expected_rejection else r.returncode==0
+ checks.append({'check':label,'image':image,'expected':'reject-imagemagick6-addon' if expected_rejection else 'load-addon','status':'PASS' if ok else 'FAIL','exitCode':r.returncode,'stdout':r.stdout,'stderr':r.stderr})
  if label=='prior-image-control': assert r.returncode==0,r.stderr
 result={'sourceSha256':hashlib.sha256(source.encode()).hexdigest(),'addonSha256':hashlib.sha256(binary).hexdigest(),'linkedLibraries':built['linked'],'checks':checks}
 a.output.write_text(json.dumps(result,indent=2)+'\n'); print(json.dumps({'checks':checks}))

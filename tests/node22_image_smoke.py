@@ -3,6 +3,7 @@ import argparse,tempfile
 parser=argparse.ArgumentParser()
 parser.add_argument('--image',default='localhost/ops-advanced-nodejs:22-20261105-r3')
 parser.add_argument('--report-dir',required=True)
+parser.add_argument('--execution-env',default='apacheopenserverless/nodejs-22.23.2')
 options=parser.parse_args()
 root=pathlib.Path(options.report_dir);root.mkdir(parents=True,exist_ok=True)
 source=pathlib.Path(__file__).resolve().parents[1]
@@ -16,7 +17,7 @@ cases.append(('zip',base64.b64encode(b.getvalue()).decode(),True,{'text':'zip-fi
 b=io.BytesIO()
 with zipfile.ZipFile(b,'w') as z:
  z.writestr('exec', '#!/bin/bash\ncd "$(dirname "$0")"\n[ "$__OW_EXECUTION_ENV" = "$(cat exec.env)" ] || exit 42\nnode exec__.js\n')
- z.writestr('exec.env','apacheopenserverless/nodejs-22.23.2')
+ z.writestr('exec.env',options.execution_env)
  z.writestr('exec__.js',(source/'runtime/nodejs/v22/lib/launcher.js').read_text())
  z.writestr('index__.js','module.exports=a=>({echo:a.text});')
 cases.append(('legacy-compiled',base64.b64encode(b.getvalue()).decode(),True,{'text':'compiled-fixture'},lambda x:x=={'echo':'compiled-fixture'}))

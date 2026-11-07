@@ -1,5 +1,9 @@
 # Node 22: Debian 12 OpenEXR backport
 
+This historical qualification is followed by the separately selected
+[dual Debian runtime contract](node22-dual-debian.md). The newer contract
+retains the compatible default and adds an explicit Debian 13 opt-in kind.
+
 This ADV image keeps Node 22.23.4, Debian 12, ImageMagick 6, the common proxy,
 compiler/launcher, npm lock and the existing archive compatibility marker.
 It rebuilds the Debian OpenEXR source `3.1.5-5` with two upstream IDManifest
