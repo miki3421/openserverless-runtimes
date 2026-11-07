@@ -79,7 +79,19 @@ asserts the specific rejection rather than accepting an arbitrary failure.
 namespace/distribution/native ABI/marker using a local `deployment.json` and
 compile `probe.node` with the appropriate runtime. Deploy only to explicitly
 authorized synthetic tenants; check owner cold/warm invocations and peer 403,
-then remove only that fixture package. Follow with application/persistence,
+then remove only that fixture package. For a package named `nodequal20261107`,
+with the matching synthetic tenant logged in, use:
+
+```sh
+ops action delete nodequal20261107/bookworm
+ops action delete nodequal20261107/trixie
+ops package delete nodequal20261107
+```
+
+Do not use the generic `ops ide undeploy` for this action-only cleanup: its
+current task also invokes `ops util clean`, which uploads the default tenant
+static landing page. Application acceptance must verify the actual frontend
+JavaScript assets, not just HTTP 200 and an HTML doctype. Follow with application/persistence,
 backend isolation, streaming and scheduler acceptance on both tenants.
 
 Qualification is scoped to the AMD64 ADV lab. No baseline change, ARM64,
