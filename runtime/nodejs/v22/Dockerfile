@@ -35,6 +35,8 @@ RUN sh /security/build-sqlite.sh \
     && echo '4dd1a1468693239801037c1d0decd9eaac0db83f9225997404afb590b5b79722  /build/sqlite/source/src/where.c' | sha256sum -c
 COPY security/build-aom.sh security/aom-bookworm-abi.patch /security/
 RUN sh /security/build-aom.sh
+COPY security/build-libxml2.sh security/libxml2-cve-2026-6653.patch /security/
+RUN sh /security/build-libxml2.sh
 
 FROM node:22.23.4-bookworm@sha256:e273cf2a19c7334c03f52e2ca933ecdfc3fbfaad49db7b8bc8c3edd9ac34e9c7 AS openexr-security
 RUN apt-get update && apt-get install -y --no-install-recommends \
@@ -69,6 +71,7 @@ RUN test "$(dpkg-query -W -f='${Version}' libopenexr-3-1-30)" = '3.1.5-5' \
 COPY --from=native-security /out/glib/ /tmp/glib-security/
 COPY --from=native-security /out/sqlite/ /tmp/sqlite-security/
 COPY --from=native-security /out/aom/ /tmp/aom-security/
+COPY --from=native-security /out/libxml2/ /tmp/libxml2-security/
 RUN test "$(dpkg-query -W -f='${Version}' libglib2.0-0)" = '2.74.6-2+deb12u9' \
     && cd /tmp/glib-security && sha256sum -c SHA256SUMS && dpkg -i ./*.deb \
     && mkdir -p /usr/share/ops-security/glib \
@@ -84,6 +87,13 @@ RUN test "$(dpkg-query -W -f='${Version}' libaom3)" = '3.6.0-1+deb12u3' \
     && mkdir -p /usr/share/ops-security/aom \
     && cp SOURCE SHA256SUMS bookworm-source.sha256 resize-regression.log aom-bookworm-abi.patch copyright changelog ./*.dsc /usr/share/ops-security/aom/ \
     && rm -rf /tmp/aom-security
+
+RUN test "$(dpkg-query -W -f='${Version}' libxml2)" = '2.9.14+dfsg-1.3~deb12u6' \
+    && test "$(dpkg-query -W -f='${Version}' libxml2-dev)" = '2.9.14+dfsg-1.3~deb12u6' \
+    && cd /tmp/libxml2-security && sha256sum -c SHA256SUMS && dpkg -i ./*.deb \
+    && mkdir -p /usr/share/ops-security/libxml2 \
+    && cp SOURCE SHA256SUMS patched-source.sha256 libxml2-cve-2026-6653.patch copyright changelog test-build.log runtest.log remaining-tests.log test-summary.txt ./*.dsc /usr/share/ops-security/libxml2/ \
+    && rm -rf /tmp/libxml2-security
 
 RUN npm install --global npm@11.21.2 && npm cache clean --force
 
