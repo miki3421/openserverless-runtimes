@@ -60,7 +60,7 @@ SQLITE_CASES = [
 
 SQLITE_DRIVER = '''import json,sqlite3,sys
 p=json.loads(sys.stdin.read());db=sqlite3.connect(':memory:')
-assert sqlite3.sqlite_version=='3.40.1'
+assert sqlite3.sqlite_version==p['version']
 if p['sql']=='transaction':
  db.execute('CREATE TABLE t(value)');db.execute('INSERT INTO t VALUES (1)');db.commit()
  db.execute('INSERT INTO t VALUES (2)');db.rollback();rows=[list(r) for r in db.execute('SELECT value FROM t')]
@@ -93,6 +93,7 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--base", required=True)
     parser.add_argument("--candidate")
+    parser.add_argument("--candidate-sqlite-version", default="3.40.1")
     parser.add_argument("--library", choices=["glib", "sqlite", "all"], default="all")
     parser.add_argument("--output", type=Path, required=True)
     args = parser.parse_args()
@@ -106,7 +107,8 @@ def main():
                 rows.append(row); (controls if valid else triggers).append(row)
         if args.library in ("sqlite", "all"):
             for name, sql, expected, regression in SQLITE_CASES:
-                row = run_case(image, "sqlite_" + name, SQLITE_DRIVER, {"name": name, "sql": sql, "expected": expected})
+                version = args.candidate_sqlite_version if image == args.candidate else "3.40.1"
+                row = run_case(image, "sqlite_" + name, SQLITE_DRIVER, {"name": name, "sql": sql, "expected": expected, "version": version})
                 rows.append(row); (triggers if regression else controls).append(row)
         report["images"][image] = rows
         if image == args.base:
