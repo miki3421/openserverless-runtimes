@@ -20,11 +20,12 @@ FROM ${COMMON} AS builder
 
 FROM node:22.23.4-bookworm@sha256:e273cf2a19c7334c03f52e2ca933ecdfc3fbfaad49db7b8bc8c3edd9ac34e9c7 AS native-security
 RUN apt-get update && apt-get install -y --no-install-recommends \
-    debhelper dh-sequence-gnome dh-sequence-python3 meson ninja-build gettext \
+    build-essential cmake debhelper dh-sequence-gnome dh-sequence-python3 meson ninja-build gettext \
     docbook-xml docbook-xsl libdbus-1-dev libelf-dev libffi-dev libmount-dev \
     libpcre2-dev libselinux1-dev python3-distutils xsltproc libxml2-utils \
     dbus-daemon shared-mime-info autoconf automake libtool chrpath lynx \
-    libreadline-dev tcl8.6-dev && rm -rf /var/lib/apt/lists/*
+    libreadline-dev libyuv-dev pkgconf tcl8.6-dev yasm \
+    && rm -rf /var/lib/apt/lists/*
 COPY security/build-glib.sh security/glib-introspection.patch /security/
 RUN sh /security/build-glib.sh \
     && meson test -C /build/glib/source/debian/build/deb --no-rebuild \
@@ -32,6 +33,8 @@ RUN sh /security/build-glib.sh \
 COPY security/build-sqlite.sh security/sqlite-distinct-order.patch /security/
 RUN sh /security/build-sqlite.sh \
     && echo '4dd1a1468693239801037c1d0decd9eaac0db83f9225997404afb590b5b79722  /build/sqlite/source/src/where.c' | sha256sum -c
+COPY security/build-aom.sh security/aom-bookworm-abi.patch /security/
+RUN sh /security/build-aom.sh
 
 FROM node:22.23.4-bookworm@sha256:e273cf2a19c7334c03f52e2ca933ecdfc3fbfaad49db7b8bc8c3edd9ac34e9c7 AS openexr-security
 RUN apt-get update && apt-get install -y --no-install-recommends \
@@ -65,6 +68,7 @@ RUN test "$(dpkg-query -W -f='${Version}' libopenexr-3-1-30)" = '3.1.5-5' \
 
 COPY --from=native-security /out/glib/ /tmp/glib-security/
 COPY --from=native-security /out/sqlite/ /tmp/sqlite-security/
+COPY --from=native-security /out/aom/ /tmp/aom-security/
 RUN test "$(dpkg-query -W -f='${Version}' libglib2.0-0)" = '2.74.6-2+deb12u9' \
     && cd /tmp/glib-security && sha256sum -c SHA256SUMS && dpkg -i ./*.deb \
     && mkdir -p /usr/share/ops-security/glib \
@@ -74,6 +78,12 @@ RUN test "$(dpkg-query -W -f='${Version}' libglib2.0-0)" = '2.74.6-2+deb12u9' \
     && mkdir -p /usr/share/ops-security/sqlite \
     && cp SOURCE SHA256SUMS patched-source.sha256 sqlite-distinct-order.patch copyright changelog distinct-test.log ./*.dsc /usr/share/ops-security/sqlite/ \
     && rm -rf /tmp/glib-security /tmp/sqlite-security
+
+RUN test "$(dpkg-query -W -f='${Version}' libaom3)" = '3.6.0-1+deb12u3' \
+    && cd /tmp/aom-security && sha256sum -c SHA256SUMS && dpkg -i ./*.deb \
+    && mkdir -p /usr/share/ops-security/aom \
+    && cp SOURCE SHA256SUMS bookworm-source.sha256 resize-regression.log aom-bookworm-abi.patch copyright changelog ./*.dsc /usr/share/ops-security/aom/ \
+    && rm -rf /tmp/aom-security
 
 RUN npm install --global npm@11.21.2 && npm cache clean --force
 

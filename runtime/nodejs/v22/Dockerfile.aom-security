@@ -1,0 +1,22 @@
+# Licensed under the Apache License, Version 2.0. See LICENSE and NOTICE.
+# Extend the exact compatible ADV image and preserve prior native fixes.
+FROM docker.io/miki3421/ops-advanced-nodejs:22-20261108-native-r1@sha256:13695d7f11dc1c66bde74c46c1019e6b6b296b58f2e3fdb439442e071745006d AS aom-tools
+USER root
+RUN apt-get update && apt-get install --yes --no-install-recommends \
+    build-essential cmake debhelper libyuv-dev pkgconf yasm \
+    && rm -rf /var/lib/apt/lists/*
+COPY security/build-aom.sh security/aom-bookworm-abi.patch /security/
+RUN sh /security/build-aom.sh
+
+FROM docker.io/miki3421/ops-advanced-nodejs:22-20261108-native-r1@sha256:13695d7f11dc1c66bde74c46c1019e6b6b296b58f2e3fdb439442e071745006d
+USER root
+COPY --from=aom-tools /out/aom/ /tmp/aom-security/
+RUN set -eu; \
+    test "$(dpkg-query -W -f='${Version}' libaom3)" = '3.6.0-1+deb12u3'; \
+    cd /tmp/aom-security; \
+    sha256sum -c SHA256SUMS; \
+    dpkg -i ./*.deb; \
+    mkdir -p /usr/share/ops-security/aom; \
+    cp SOURCE SHA256SUMS bookworm-source.sha256 resize-regression.log aom-bookworm-abi.patch copyright changelog ./*.dsc /usr/share/ops-security/aom/; \
+    rm -rf /tmp/aom-security
+USER nobody
