@@ -14,6 +14,7 @@ parser.add_argument('--api', required=True)
 parser.add_argument('--native-addon', type=pathlib.Path)
 parser.add_argument('--openexr-version')
 parser.add_argument('--npm-backport', action='store_true')
+parser.add_argument('--native-library-backports', action='store_true')
 args = parser.parse_args()
 assert bool(args.native_addon) == bool(args.openexr_version), 'Native image checks require both inputs'
 config = json.loads(args.config.read_text())
@@ -77,6 +78,36 @@ const guardReceipt=''')
     code = code.replace('jsonRoundtrip,uuidRoundtrip,guardReceipt,',
                         'jsonRoundtrip,uuidRoundtrip,guardReceipt,npmGuardReceipt,npmPattern,')
     expected_native.update({'npmGuardReceipt': 6, 'npmPattern': True})
+
+if args.native_library_backports:
+    # Positive controls only on the shared lab. Malformed parser/SQL vectors
+    # belong exclusively to the isolated installed-library regression suite.
+    probe = '''import ctypes,json,sqlite3
+gio=ctypes.CDLL('libgio-2.0.so.0')
+gio.g_dbus_node_info_new_for_xml.argtypes=[ctypes.c_char_p,ctypes.POINTER(ctypes.c_void_p)]
+gio.g_dbus_node_info_new_for_xml.restype=ctypes.c_void_p
+gio.g_dbus_node_info_unref.argtypes=[ctypes.c_void_p]
+error=ctypes.c_void_p()
+node=gio.g_dbus_node_info_new_for_xml(b'<node><interface name="org.example.Test"><method name="Read"/></interface></node>',ctypes.byref(error))
+assert node and not error.value
+gio.g_dbus_node_info_unref(node)
+db=sqlite3.connect(':memory:');db.execute('CREATE TABLE t(value)')
+db.execute('INSERT INTO t VALUES (?)',('synthetic',));db.commit()
+assert db.execute('SELECT DISTINCT value FROM t ORDER BY value').fetchall()==[('synthetic',)]
+db.close();print(json.dumps({'glib':True,'sqlite':True}))
+'''
+    extension = '''const nativeCp=require('node:child_process');
+const nativeLibraries=JSON.parse(nativeCp.execFileSync('python3',['-c',PROBE],{encoding:'utf8',timeout:10000}));
+const nativeVersions={};
+for(const [key,pkg] of [['glib','libglib2.0-0'],['sqlite','libsqlite3-0']]) {
+ nativeVersions[key]=nativeCp.execFileSync('dpkg-query',['-W','-f=${Version}',pkg],{encoding:'utf8',timeout:10000});
+}
+'''.replace('PROBE', json.dumps(probe))
+    assert code.count('return {') == 1
+    code = code.replace('return {', extension + 'return {nativeLibraries,nativeVersions,')
+    expected_native.update({'nativeLibraries': {'glib': True, 'sqlite': True},
+                            'nativeVersions': {'glib': '2.74.6-2+deb12u9+0ops1',
+                                               'sqlite': '3.40.1-2+deb12u2+0ops1'}})
 
 class NoRedirect(urllib.request.HTTPRedirectHandler):
     def redirect_request(self, *arguments, **kwargs):

@@ -1,0 +1,19 @@
+From: OpenServerless ADV build
+Subject: Backport GLib c9da977c178fbfc0e4caf99f9fdf5dc433d6fcc2
+
+Upstream: https://gitlab.gnome.org/GNOME/glib/-/merge_requests/5156
+CVE-2026-58016: enforce the immediate parent for nested node elements.
+Only the shared production parser change is backported. Regression cases are
+exercised against the installed library by tests/node22_native_libraries.py.
+
+--- a/gio/gdbusintrospection.c
++++ b/gio/gdbusintrospection.c
+@@ -1272,7 +1272,7 @@
+   /* ---------------------------------------------------------------------------------------------------- */
+   if (strcmp (element_name, "node") == 0)
+     {
+-      if (!(g_slist_length (stack) >= 1 || strcmp (stack->next->data, "node") != 0))
++      if (stack->next != NULL && strcmp (stack->next->data, "node") != 0)
+         {
+           g_set_error_literal (error,
+                                G_MARKUP_ERROR,

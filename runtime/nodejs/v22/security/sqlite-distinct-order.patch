@@ -1,0 +1,88 @@
+From: OpenServerless ADV build
+Subject: Backport SQLite DISTINCT / ORDER BY bound
+
+Upstream mirror: b816ca9994e03a8bc829b49452b8158a731e81a9
+FossilOrigin-Name: 12ad822d9b827777526ca5ed5bf3e678d600294fc9b5c25482dfff2a021328a4
+CVE-2025-7458: clamp satisfied ORDER BY terms to the actual ORDER BY list.
+
+diff --git a/src/where.c b/src/where.c
+index 727c77948e..f707fab12b 100644
+--- a/src/where.c
++++ b/src/where.c
+@@ -5299,6 +5299,10 @@ static int wherePathSolver(WhereInfo *pWInfo, LogEst nRowEst){
+       if( pFrom->isOrdered==pWInfo->pOrderBy->nExpr ){
+         pWInfo->eDistinct = WHERE_DISTINCT_ORDERED;
+       }
++      if( pWInfo->pSelect->pOrderBy
++       && pWInfo->nOBSat > pWInfo->pSelect->pOrderBy->nExpr ){
++        pWInfo->nOBSat = pWInfo->pSelect->pOrderBy->nExpr;
++      }
+     }else{
+       pWInfo->revMask = pFrom->revLoop;
+       if( pWInfo->nOBSat<=0 ){
+diff --git a/test/distinct.test b/test/distinct.test
+index 446f85bb8e..760b2341f5 100644
+--- a/test/distinct.test
++++ b/test/distinct.test
+@@ -348,5 +348,61 @@ foreach {tn idx} {
+   }
+ }
+ 
++# 2023-03-16
++# https://sqlite.org/forum/forumpost/16ce2bb7a639e29b
++# ticket c36cdb4afd504dc1
++# ticket 4051a7f931d9ba24
++# ticket d6fd512f50513ab7
++#
++do_execsql_test 10.1 {
++  SELECT  DISTINCT
++    1,  1,  1,  1,  1,  1,  1,  1,  1,  1,
++    1,  1,  1,  1,  1,  1,  1,  1,  1,  1,
++    1,  1,  1,  1,  1,  1,  1,  1,  1,  1,
++    1,  1,  1,  1,  1,  1,  1,  1,  1,  1,
++    1,  1,  1,  1,  1,  1,  1,  1,  1,  1,
++    1,  1,  1,  1,  1,  1,  1,  1,  1,  1,
++    1,  1,  1,  1,  1
++  ORDER  BY
++   'x','x','x','x','x','x','x','x','x','x',
++   'x','x','x','x','x','x','x','x','x','x',
++   'x','x','x','x','x','x','x','x','x','x',
++   'x','x','x','x','x','x','x','x','x','x',
++   'x','x','x','x','x','x','x','x','x','x',
++   'x','x','x','x','x','x','x','x','x','x',
++   'x','x','x','x';
++} {1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1}
++do_execsql_test 10.2 {
++  EXPLAIN
++  SELECT  DISTINCT
++    1,  1,  1,  1,  1,  1,  1,  1,  1,  1,
++    1,  1,  1,  1,  1,  1,  1,  1,  1,  1,
++    1,  1,  1,  1,  1,  1,  1,  1,  1,  1,
++    1,  1,  1,  1,  1,  1,  1,  1,  1,  1,
++    1,  1,  1,  1,  1,  1,  1,  1,  1,  1,
++    1,  1,  1,  1,  1,  1,  1,  1,  1,  1,
++    1,  1,  1,  1,  1
++  ORDER  BY
++   'x','x','x','x','x','x','x','x','x','x',
++   'x','x','x','x','x','x','x','x','x','x',
++   'x','x','x','x','x','x','x','x','x','x',
++   'x','x','x','x','x','x','x','x','x','x',
++   'x','x','x','x','x','x','x','x','x','x',
++   'x','x','x','x','x','x','x','x','x','x',
++   'x','x','x','x';
++} {/0 Init 0 /}
++do_execsql_test 10.3 {
++  EXPLAIN  CREATE  TABLE t2 AS  SELECT  DISTINCT ':memory:', 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7 ORDER  BY '%J%j%w%s', 'unixepoch', 'unixepoch', 'unixepoch', 'unixepoch', 'unixepoch', 'unixepoch', 'unixepoch', 'unixepoch', '%J%j%w%s', 'unixepoch', 'unixepoch', 'unixepoch', 'unixepoch', 'unixepoch', 'unixepoch', 'unixepoch', 'unixepoch', 'unixepoch', 'unixepoch', 'unixepoch', 'unixepoch', 'unixepoch', 'unixepoch', 'unixepoch', 'unixepoch', 'unixepoch', 'unixepoch', 'unixepoch', 'unixepoch', 'unixepoch', 'unixepoch', 'unixepoch', 'unixepoch', 'unixepoch', 'unixepoch', 'unixepoch', 'unixepoch', 'unixepoch', 'unixepoch', 'unixepoch', 'unixepoch', 'unixepoch', 'unixepoch', 'unixepoch', 'unixepoch', 'unixepoch', 'unixepoch', 'unixepoch', 'unixepoch', 'unixepoch', 'unixepoch', 'unixepoch', 'unixepoch', 'unixepoch', 'unixepoch', 'unixepoch', 'unixepoch', 'unixepoch', 'unixepoch', 42e-300, 'unixepoch', 'unixepoch', 'unixepoch' LIMIT 0xda;
++} {/0 Init 0/}
++do_execsql_test 10.4 {
++  DROP TABLE IF EXISTS t0;
++  CREATE  TABLE t0 AS  SELECT  DISTINCT 0xda, 'lit0', 'lit0', 'lit0', 'lit0', 'lit0', 'lit0', 'lit0', 'lit0', 'lit0', 'lit0', 'lit0', 'lit0', 'lit0', 'lit0', 'lit0', 'lit0', 'lit0', 'lit0', 'lit0', 'lit0', 'lit0', 'lit0', 'lit0', 'lit0', 'lit0', 'lit0', 'lit0', 'lit0', 'lit0', 'lit0', 'lit0', 'lit0', 'lit0', 'lit0', 'lit0', 'lit0', 'lit0', 'lit0', 'lit0', 'lit0', 'lit0', 'lit0', 'lit0', 'lit0', 0xda-0xda-42e-300, 'lit0', 'lit0', 'lit0', 'lit0', 'lit0', 'lit0', 'lit0', 'lit0', 'lit0', 'lit0', 'lit0', 'lit0', 'lit0', 'lit0', 'lit0', 'lit0', 'lit0', 'lit0', 'lit0' ORDER  BY '%%', '%%', '%%', '%%', '%%', '%%', '%%', '%%', '%%', '%%', '%%', '%%', '%%', '%%', '%%', '%Y-%m-%d', '%%', '%%', '%%', '%%', '%%', '%%', '%%', '%%', '%%', '%%', 'lit0', '%%', '%%', '%%', '%%', '%%', '%%', '%%', '%%', '%%', '%%', '%%', '%%', '%%', 'auto', '%%', '%%', '%%', '%%', '%%', '%%', '%%', '%%', '%%', '%%', '%%', ':memory:', '%%', '%%', '%%', '%%', '%%', '%%', '%%', '%%', '%%', '%%', '';
++  SELECT count(*) FROM t0;
++} {1}
++do_execsql_test 10.5 {
++  DROP TABLE IF EXISTS t2;
++  CREATE  TABLE t2 AS  SELECT  DISTINCT ':memory:', 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 0.0*7/0, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7 ORDER  BY '%J%j%w%s', 'unixepoch', 'unixepoch', 'unixepoch', 'unixepoch', 'unixepoch', 'unixepoch', 'unixepoch', 'unixepoch', '%J%j%w%s', 'unixepoch', 'unixepoch', 'unixepoch', 'unixepoch', 'unixepoch', 'unixepoch', 'unixepoch', 'unixepoch', 'unixepoch', 'unixepoch', 'unixepoch', 'unixepoch', 'unixepoch', 'unixepoch', 'unixepoch', 'unixepoch', 'unixepoch', 'unixepoch', 'unixepoch', 'unixepoch', 'unixepoch', 'unixepoch', 'unixepoch', 'unixepoch', 'unixepoch', 'unixepoch', 'unixepoch', 'unixepoch', 'unixepoch', 'unixepoch', 'unixepoch', 'unixepoch', 'unixepoch', 'unixepoch', 'unixepoch', 'unixepoch', 'unixepoch', 'unixepoch', 'unixepoch', 'unixepoch', 'unixepoch', 'unixepoch', 'unixepoch', 'unixepoch', 'unixepoch', 'unixepoch', 'unixepoch', 'unixepoch', 'unixepoch', 'unixepoch', 42e-300, 'unixepoch', 'unixepoch', 'unixepoch' LIMIT 0xda;
++  SELECT count(*) FROM t2;
++} {1}
+ 
+ finish_test
