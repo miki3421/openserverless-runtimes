@@ -1,0 +1,17 @@
+# Licensed under the Apache License, Version 2.0. See LICENSE and NOTICE.
+FROM docker.io/miki3421/ops-advanced-nodejs:22-20261108-libxml2-r1@sha256:53baedd26dfb2b72cda94eb6a9cfeb8228070b001fbea9a58378ead3272f968f
+
+USER root
+RUN installed_version="$(dpkg-query -W -f='${Version}' openssh-client)" \
+    && test "$installed_version" = '1:9.2p1-2+deb12u10' \
+    && apt-get purge -y openssh-client \
+    && test "$(dpkg-query -W -f='${db:Status-Status}' openssh-client 2>/dev/null || true)" != installed \
+    && ! command -v ssh >/dev/null 2>&1 \
+    && ! command -v scp >/dev/null 2>&1 \
+    && ! command -v sftp >/dev/null 2>&1 \
+    && mkdir -p /usr/share/ops-security/openssh-removal \
+    && printf '%s\n' \
+       "Removed openssh-client ${installed_version}." \
+       'CVE-2026-60002: the default managed action runtime does not support an inherited SSH client.' \
+       > /usr/share/ops-security/openssh-removal/SOURCE
+USER nobody

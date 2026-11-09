@@ -38,6 +38,13 @@ RUN sh /security/build-aom.sh
 COPY security/build-libxml2.sh security/libxml2-cve-2026-6653.patch /security/
 RUN sh /security/build-libxml2.sh
 
+# Export the independently verified Bookworm package backports as a minimal,
+# digest-pinned carrier for the other ADV Python-based images.  The carrier is
+# built explicitly with --target and is never selected as the Node runtime.
+FROM scratch AS bookworm-native-security-packages
+COPY --from=native-security /out/sqlite/ /out/sqlite/
+COPY --from=native-security /out/libxml2/ /out/libxml2/
+
 FROM node:22.23.4-bookworm@sha256:e273cf2a19c7334c03f52e2ca933ecdfc3fbfaad49db7b8bc8c3edd9ac34e9c7 AS openexr-security
 RUN apt-get update && apt-get install -y --no-install-recommends \
     cmake debhelper dh-buildinfo dpkg-dev patch && rm -rf /var/lib/apt/lists/*
@@ -58,6 +65,21 @@ RUN apt-get update && apt-get upgrade -y && apt-get install -y \
     graphicsmagick \
     unzip \
     && rm -rf /var/lib/apt/lists/*
+
+# The managed Node runtime has no supported SSH client contract.  Remove the
+# inherited client instead of carrying a remotely triggerable protocol parser.
+RUN installed_version="$(dpkg-query -W -f='${Version}' openssh-client)" \
+    && test "$installed_version" = '1:9.2p1-2+deb12u10' \
+    && apt-get purge -y openssh-client \
+    && test "$(dpkg-query -W -f='${db:Status-Status}' openssh-client 2>/dev/null || true)" != installed \
+    && ! command -v ssh >/dev/null 2>&1 \
+    && ! command -v scp >/dev/null 2>&1 \
+    && ! command -v sftp >/dev/null 2>&1 \
+    && mkdir -p /usr/share/ops-security/openssh-removal \
+    && printf '%s\n' \
+       "Removed openssh-client ${installed_version}." \
+       'CVE-2026-60002: the default managed action runtime does not support an inherited SSH client.' \
+       > /usr/share/ops-security/openssh-removal/SOURCE
 
 COPY --from=openexr-security /out/ /tmp/openexr-security/
 RUN test "$(dpkg-query -W -f='${Version}' libopenexr-3-1-30)" = '3.1.5-5' \
