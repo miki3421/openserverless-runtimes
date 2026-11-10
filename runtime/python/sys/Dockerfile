@@ -16,7 +16,9 @@
 #
 
 ARG COMMON=missing:missing
+ARG SECURITY_PACKAGES_IMAGE=docker.io/miki3421/ops-advanced-bookworm-security:20261109-r1@sha256:65c238b1d8e0463e350c1bb815fcbd830f175f0991247a6b59b9ca226e39c582
 FROM ${COMMON} AS builder
+FROM ${SECURITY_PACKAGES_IMAGE} AS bookworm-security
 
 FROM python:3.12.16-slim-bookworm@sha256:935c3c5b12357a7e10caa9c1e6ca5692344d97cf229832ef584be2cec9fc03df
 # Preserve the marker accepted by existing compiled Python 3.12 archives.
@@ -26,6 +28,17 @@ COPY --from=builder /go/bin/proxy /bin/proxy
 # install zip
 RUN apt-get update && apt-get upgrade -y && apt-get install -y python3-lxml zip \
     && rm -rf /var/lib/apt/lists/*
+
+# Apply the qualified Bookworm SQLite regression fix without changing the
+# Python sys runtime's package surface or execution contract.
+COPY --from=bookworm-security /out/sqlite/ /tmp/sqlite-security/
+RUN test "$(dpkg-query -W -f='${Version}' libsqlite3-0)" = '3.40.1-2+deb12u2' \
+    && cd /tmp/sqlite-security && sha256sum -c SHA256SUMS \
+    && dpkg -i libsqlite3-0_3.40.1-2+deb12u2+0ops1_amd64.deb \
+    && mkdir -p /usr/share/ops-security/sqlite \
+    && cp SOURCE SHA256SUMS patched-source.sha256 sqlite-distinct-order.patch copyright changelog distinct-test.log ./*.dsc /usr/share/ops-security/sqlite/ \
+    && test "$(dpkg-query -W -f='${Version}' libsqlite3-0)" = '3.40.1-2+deb12u2+0ops1' \
+    && rm -rf /tmp/sqlite-security
 
 # Install common modules for python
 COPY requirements.txt requirements.txt

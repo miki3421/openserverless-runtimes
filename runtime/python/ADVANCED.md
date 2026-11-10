@@ -35,6 +35,18 @@ Local Docker checks use `tests/python_runtime_compat.py` with explicit image/bas
 
 These results do not migrate the entire Alpha/Beta application to 3.15, qualify arbitrary application packages, ARM64, production, a fresh complete cluster install or the full repository suite. Earlier unrelated operator/proxy fixture failures remain open; this batch does not reclassify them.
 
+### python:sys SQLite backport — 2026-11-10
+
+The AMD64 `python:sys` runtime now has a qualified SQLite-only overlay built from the exact `sys-20261105-r1` parent. It installs only `libsqlite3-0` `3.40.1-2+deb12u2+0ops1` from the digest-pinned Bookworm security carrier; `libsqlite3-dev`, libxml2, Python packages, proxy, compiler, launcher, release metadata and OCI runtime configuration are unchanged. The canonical Dockerfile contains the same correction so a normal rebuild does not reintroduce the vulnerable package.
+
+The exact parent reproduced the CVE-2025-7458 DISTINCT/ORDER BY regression and an `EXPLAIN` case exited with signal status 139. The candidate passed all eight SQLite controls/regressions, `dpkg --audit`, `pip check`, system-library linkage checks and 11 runtime compatibility checks covering old compiled archives and old/current bundled virtualenvs. In the private ADV cluster, tenant-selected `python:sys` cold, warm and post-invoker-restart calls all passed as UID 65534. The `whisk-system/nuv/login` smoke, Alpha/Beta health checks, cross-tenant denial and the post-restart invoker health action also passed. The temporary validation action was deleted.
+
+Qualified image: `docker.io/miki3421/ops-advanced-python:sys-20261110-sqlite-r1@sha256:c70050c3fca2254b895014d59ee8777a781e88d0bc3e5265a7ca2dc16ca35485`. It was first imported into the private target node and was published to Docker Hub on 2026-11-10 with the same manifest digest. The prior image and ConfigMap snapshot are retained for rollback. This qualification is AMD64-only because the retained `.deb` is architecture-specific.
+
+The full 33-image Trivy rescan used the same Trivy 0.76.2 database identity as the preceding checkpoint (`UpdatedAt` `2026-11-10T13:03:09.93195248Z`, database SHA256 `c6512d0a28df88bc2d796b48792987f54a3e9a28704b35bb976bfab5460ee706`). Raw totals remain 51 Critical / 1,729 High overall and 3 / 101 for `python:sys`: the advisory feed cannot recognize the local `+0ops1` source backport. Applicability is separate: the SQLite occurrence is remediated, the residual libxml2 occurrence is not applicable to the current managed Python path, and no known applicable Critical remains pending.
+
+The runtime ConfigMap watcher initially restarted Controller and Invoker but could not recreate the completed preload job because the prior operator image lacked the runtime deployment assets. The follow-up operator `20261110-preloader-r2@sha256:50563fce3d60a5ed338d0db99de7042cc893380840b685493c749486ec30ec93` packages those assets, deletes the fixed-name job without depending on mutable render state and propagates reconcile failures. A live metadata-only ConfigMap update recreated and completed the job with this `python:sys` image; Controller/Invoker returned Ready and a temporary `python:sys` action passed before cleanup.
+
 ## Scanner results
 
 Trivy 0.76.2, same database for all images (updated 2026-11-05T19:01:45Z, SHA256 `2ce29bda5b2483d84da3f4365398addcf03a7decf5c79e29dc73db8f0fa454ed`), no exclusions. Counts are unique advisory/package/installed-version tuples per image, not demonstrated exploitable paths.
